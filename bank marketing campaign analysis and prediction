@@ -1,0 +1,85 @@
+import pandas as pd
+import zipfile
+import os
+import numpy as np
+import seaborn as sns
+import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelEncoder
+from sklearn.tree import DecisionTreeClassifier, plot_tree
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+
+
+zip_path = "C:/Users/INDIA/Downloads/bank+marketing.zip"
+extract_path = "C:/Users/INDIA/Downloads/bank+marketing"
+
+with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+    zip_ref.extractall(extract_path)
+
+
+csv_path = None
+for root, dirs, files in os.walk(extract_path):
+    for file in files:
+        if file.endswith(".csv"):
+            csv_path = os.path.join(root, file)
+            break
+    if csv_path:
+        break
+
+if not csv_path:
+    raise FileNotFoundError("No CSV file found inside the zip archive.")
+
+df = pd.read_csv(csv_path, sep=";")  
+print("Dataset loaded successfully!\n")
+print(df.head())
+
+label_encoders = {}
+for col in df.select_dtypes(include=['object']).columns:
+    le = LabelEncoder()
+    df[col] = le.fit_transform(df[col])
+    label_encoders[col] = le
+
+
+X = df.drop(columns=['y'])
+y = df['y']
+
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+print("\nData Preprocessing Complete!")
+
+
+model = DecisionTreeClassifier(criterion='entropy', max_depth=5, random_state=42)
+model.fit(X_train, y_train)
+
+
+y_pred = model.predict(X_test)
+accuracy = accuracy_score(y_test, y_pred)
+print(f"\n✅ Model Accuracy: {accuracy:.2f}")
+
+
+cm = confusion_matrix(y_test, y_pred)
+sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=['No', 'Yes'], yticklabels=['No', 'Yes'])
+plt.xlabel("Predicted")
+plt.ylabel("Actual")
+plt.title("Confusion Matrix")
+plt.show()
+
+
+print("\nClassification Report:\n", classification_report(y_test, y_pred))
+
+
+importances = model.feature_importances_
+feature_names = X.columns
+plt.figure(figsize=(12,6))
+sns.barplot(x=importances, y=feature_names, palette="viridis")
+plt.xlabel("Importance Score")
+plt.ylabel("Features")
+plt.title("Feature Importance in Decision Tree")
+plt.show()
+
+
+
+new_customer = np.array([[35, 2, 1, 2, 0, 2000, 1, 0, 1, 5, 30, 999, 0, 1, 0]])
+prediction = model.predict(new_customer)
+result = "Yes" if prediction[0] == 1 else "No"
+print(f"\nPrediction for new customer: {result}")
